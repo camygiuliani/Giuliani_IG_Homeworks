@@ -6,11 +6,16 @@ function GetTransform( positionX, positionY, rotation, scale )
 	const s=scale;
 	//conversion from degrees to radiants
 	const theta=rotation*(Math.PI/180);
+    
 	const cost=Math.cos(theta);
 	const sint=Math.sin(theta);
 	const x=positionX;
 	const y=positionY;
-	return Array( s*cost,s*sint,0,-s*sint,s*cost,0,x,y,1 );
+
+
+	return Array( s*cost,s*sint,0,
+                -s*sint,s*cost,0,
+                x,y,1 );
 }
 
 // Returns a 3x3 transformation matrix as an array of 9 values in column-major order.
