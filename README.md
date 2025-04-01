@@ -2,5 +2,6 @@
 This repository contains my assignments for the **Interactive Graphics** course.  
 
 ## 📂 Structure  
-- `homework1/` - Basic WebGL scene  
-- `homework2/` - More advanced WebGL rendering  
+- `hmw_1/` - Basic WebGL scene  
+- `hmw_2/` - More advanced WebGL rendering  
+- `hmw_3/` - Texture thing
