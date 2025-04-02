@@ -3,12 +3,14 @@
 // The given rotation value is in degrees.
 function GetTransform( positionX, positionY, rotation, scale )
 {
+    //new variables make it easier
 	const s=scale;
+
 	//conversion from degrees to radiants
 	const theta=rotation*(Math.PI/180);
-    
-	const cost=Math.cos(theta);
+    const cost=Math.cos(theta);
 	const sint=Math.sin(theta);
+
 	const x=positionX;
 	const y=positionY;
 
@@ -25,6 +27,7 @@ function ApplyTransform( trans1, trans2 )
 {
 	let result = new Array(9);
 
+    //creating the output array with the column major order
     for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3; col++) {
             result[row + col * 3] =
