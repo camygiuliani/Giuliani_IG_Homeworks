@@ -40,8 +40,8 @@ function GetModelViewProjection( projectionMatrix, translationX, translationY, t
 	];
 
 	var mvp=MatrixMult( projectionMatrix, trans );
-	mvp = MatrixMult(mvp, Ry);
 	mvp = MatrixMult(mvp, Rx);
+	mvp = MatrixMult(mvp, Ry);
 
 
 	return mvp;
