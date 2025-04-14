@@ -39,6 +39,9 @@ function GetModelViewProjection( projectionMatrix, translationX, translationY, t
 		0,0,0,1
 	];
 
+	// I must begin from the proj.matrix , so the matrix seen from the screen . Then I have to multiply it by the
+	//transformastion matrix, so the one with the traslations. At the end I do the product with the rotation matrices.
+
 	var mvp=MatrixMult( projectionMatrix, trans );
 	mvp = MatrixMult(mvp, Rx);
 	mvp = MatrixMult(mvp, Ry);
@@ -73,7 +76,13 @@ class MeshDrawer
 	{
 		// [TO-DO] initializations
 		
-		//GLSL code for shaders
+		//==================GLSL code for shaders======================
+
+		// swap - in the vertex shader I want the option to apply a rotation matrix which swaps y-axis with z-axis so I use a boolean
+		// pos - 3D position of the vertex
+		//tc -texture coordinate of the vertex
+		//vtc - this is varying because I use it to pass tc to the fragment shader
+		//mvp - is the Model-View-Proj matrix used to transform pos
 		var VertexShaderText=`
 			uniform bool swap;
 			uniform mat4 mvp;
@@ -94,6 +103,7 @@ class MeshDrawer
 				vtc = tc;
 			}
 			` 
+		//vtc- intrerpolated texture coodinates from the vertex shader
 		var fragmentShaderText = `
 			precision mediump float;
 			uniform bool show;
