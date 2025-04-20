@@ -6,6 +6,7 @@ Camilla Giuliani- 1883207
 - `hmw_1/` - Basic WebGL scene implementing alpha blending
 - `hmw_2/` - More advanced WebGL rendering  
 - `hmw_3/` - Texture thing
+- `hmw_4/` - Texture thing + Blinn shading
 
 
 ## References
