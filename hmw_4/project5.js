@@ -99,6 +99,7 @@ class MeshDrawer
 			//sampler2D-> is a special type inGLSL to represent a 2D texture
 			
 			uniform sampler2D tex;
+			uniform bool hasTexture;
 
 			varying vec2 v_tc;
 			varying vec3 v_normal;
@@ -117,13 +118,10 @@ class MeshDrawer
 
 			    
 				vec4 diffuse_color=vec4(1.0); //total white
-				if(show){
+				if(hasTexture && show ){
 					diffuse_color = texture2D(tex,v_tc);
 				}	
-				else{
-					diffuse_color = vec4(1.0,1.0,1.0,1.0);
-		
-				}
+				
 				//geometry term
 				float cos_theta = max(0.0, dot(normalize(v_normal), normalize(light_dir)));
 
@@ -208,15 +206,14 @@ class MeshDrawer
 		this.specu_colorLoc= gl.getUniformLocation(this.prog, 'specu_color');
 		this.light_intLoc=gl.getUniformLocation(this.prog, 'light_int');
 		this.phong_expoLoc = gl.getUniformLocation(this.prog, 'phong_expo');
+		this.hasTexLoc = gl.getUniformLocation(this.prog, 'hasTexture');
+		gl.uniform1i(this.hasTexLoc,  0);
+
 
 		
 
-
-
-
-		/* this.checkbox_show = true;
-		this.texture_exist = false;
-		gl.uniform1i( this.show, false ); */
+		gl.uniform1i(this.showLoc, 1); // set 'show' a true
+		//gl.uniform1i( this.show, 1 ); 
 	
 		const lightColorLoc = gl.getUniformLocation(this.prog, "light_color");
 		gl.uniform3f(lightColorLoc, 1.0, 1.0, 1.0);
@@ -387,6 +384,10 @@ class MeshDrawer
 		// as in the previous work///
 		// [TO-DO] Bind the texture
 		gl.useProgram(this.prog);
+
+		let hasTexture = img ? 1 : 0;
+		gl.uniform1i(this.hasTexLoc, hasTexture);
+
 		const texture = gl.createTexture(); 
 		gl.bindTexture(gl.TEXTURE_2D, texture);
 
