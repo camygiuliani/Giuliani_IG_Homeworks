@@ -42,8 +42,29 @@ function GetModelViewMatrix( translationX, translationY, translationZ, rotationX
 	//as in the previous project
 	var mv = MatrixMult(trans,Rx);
 	mv=MatrixMult(mv,Ry);
-	return mv;
+	return mv; 
+	
 }
+
+function IdentityMatrix() {
+    return [
+        1, 0, 0, 0,  // colonna 0
+        0, 1, 0, 0,  // colonna 1
+        0, 0, 1, 0,  // colonna 2
+        0, 0, 0, 1   // colonna 3
+    ];
+}
+
+function transposeMatrix(matrix){
+	let output = []; 
+	for(let col = 0; col < 4; col++){
+		for(let row = 0; row < 4; row++){
+			output.push(matrix[col + (row * 4)])
+		}
+	}
+	return output;
+}
+
 
 
 // [TO-DO] Complete the implementation of the following class.
