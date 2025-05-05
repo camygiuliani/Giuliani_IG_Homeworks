@@ -5,9 +5,12 @@ struct Ray {
 };
 
 struct Material {
-	vec3  k_d;	// diffuse coefficient
-	vec3  k_s;	// specular coefficient
-	float n;	// specular exponent
+	// diffuse coefficient
+	vec3  k_d;	
+	// specular coefficient
+	vec3  k_s;	
+	// specular exponent
+	float n;	
 };
 
 struct Sphere {
@@ -35,6 +38,7 @@ uniform int bounceLimit;
 
 bool IntersectRay( inout HitInfo hit, Ray ray );
 
+
 // Shades the given point and returns the computed color.
 vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
 {
@@ -55,9 +59,13 @@ bool IntersectRay( inout HitInfo hit, Ray ray )
 {
 	hit.t = 1e30;
 	bool foundHit = false;
+
+
 	for ( int i=0; i<NUM_SPHERES; ++i ) {
 		// TO-DO: Test for ray-sphere intersection
 		// TO-DO: If intersection is found, update the given HitInfo
+
+		Sphere sphere=spheres[i];
 	}
 	return foundHit;
 }
