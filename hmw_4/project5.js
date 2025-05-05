@@ -134,6 +134,8 @@ class MeshDrawer
 			uniform float light_int;
 			uniform float phong_expo;	
 			
+
+			// I want a Blinn-Phong shading
 			
 			void main(){
 
