@@ -2,6 +2,8 @@
 // The two rotations are applied around x and y axes.
 // It returns the combined 4x4 transformation matrix as an array in column-major order.
 // You can use the MatrixMult function defined in project5.html to multiply two 4x4 matrices in the same format.
+
+
 function GetModelViewMatrix( translationX, translationY, translationZ, rotationX, rotationY )
 {
 	// [TO-DO] Modify the code below to form the transformation matrix.
@@ -82,9 +84,7 @@ class MeshDrawer
 		//tc -texture coordinate of the vertex
 		//vtc - this is varying because I use it to pass tc to the fragment shader
 		//mvp - is the Model-View-Proj matrix used to transform pos
-		const VertexShaderText=`
-			
-
+		const VertexShaderText = /* glsl */  `			
 			// uniform matrices
 			uniform mat4 mvp;
 			uniform mat4 mv;
@@ -99,20 +99,21 @@ class MeshDrawer
 			attribute vec3 normal;
 			varying vec3 v_normal;
 
-			varying vec4 v_frag_pos;
+			varying vec3 v_frag_pos;
 
 			void main(){
 
 				v_tc = tc;
-				v_normal=normalMV*normal;
-				v_frag_pos= mv* vec4(pos,0.0);
+				v_normal=normalize(normalMV*mat3(swap_yz)*normal);
+
+				v_frag_pos= vec3(mv*swap_yz* vec4(pos,1.0));
 
 				gl_Position = mvp * swap_yz* vec4(pos, 1.0);
 			
 			}
 			` ;
 		//vtc- intrerpolated texture coodinates from the vertex shader
-		const fragmentShaderText = `
+		const fragmentShaderText = /* glsl */  `
 			precision mediump float;
 
 			uniform bool show;
@@ -124,7 +125,7 @@ class MeshDrawer
 
 			varying vec2 v_tc;
 			varying vec3 v_normal;
-			varying vec4 v_frag_pos;
+			varying vec3 v_frag_pos;
 
 			//light components
 
@@ -138,9 +139,9 @@ class MeshDrawer
 			// I want a Blinn-Phong shading
 			
 			void main(){
-                /*      //////////////////////////////////////      /
-                /            I want to implement Blinn shading     /
-                ///////////////////////////////////////////////////*/
+                //      //////////////////////////////////////      /
+                //           I want to implement Blinn shading     /
+                // /////////////////////////////////////////////////
 			    
                 //Kd coefficient for diffuse lambertian material
                 // before thinking about texture let's put total white color
@@ -153,7 +154,7 @@ class MeshDrawer
 
 				vec3 light_dir_n= normalize(light_dir);
 				vec3 v_normal_n= normalize(v_normal);
-				vec3 viewDir=normalize(-v_frag_pos.xyz);   //camera direction
+				vec3 viewDir=normalize(-v_frag_pos);   //camera direction
 
 				
 				//geometry term
@@ -165,8 +166,13 @@ class MeshDrawer
 				vec4 lightning_col=light_int*vec4(light_color,1.0);
 
 				//"luce ambientale"---> we put vec4(0.1,0.1,0.1,1.0) which is a dark grey for darker areas not enlighted
-				vec4 ambient_col= light_int*vec4(0.1,0.1,0.1,1.0);
+				//vec4 ambient_col= light_int*vec4(0.1,0.1,0.1,1.0);
 
+
+				if(hasTexture && show ){
+					vec4 texcolor = texture2D(tex,v_tc);
+					Kd=texcolor;
+				}
 				// "luce diffusa totale" =" colore diffuso"+ "luce ambientale"
 				vec4 diffuse_lighting=Kd*cos_theta;
 
@@ -187,19 +193,16 @@ class MeshDrawer
 
 					
 					
-				gl_FragColor= lightning_col*(diffuse_lighting+ specu_lighting ) +ambient_col ;
+				gl_FragColor= 1.0*(diffuse_lighting+ specu_lighting );// +ambient_col ;
 
-				if(hasTexture && show ){
-					vec4 texcolor = texture2D(tex,v_tc);
-					gl_FragColor.rgb*=texcolor.rgb;
-				}	
+					
 				
 				
 
 			
 			}
-			` ;	
-		
+			` ;
+
 		
 		// creating buffers
 		this.virtualS=gl.createShader(gl.VERTEX_SHADER);
@@ -345,7 +348,7 @@ class MeshDrawer
 	// The argument is a boolean that indicates if the checkbox is checked.
 	swapYZ( swap )
 	{
-		// [TO-DO] Set the uniform parameter(s) of the vertex shader
+		 // [TO-DO] Set the uniform parameter(s) of the vertex shader
 		
 		//as in the prevoius hmw
 		gl.useProgram(this.prog);
@@ -363,17 +366,21 @@ class MeshDrawer
 					0,-Math.sin(Math.PI/2),Math.cos(Math.PI/2),0,
 					0,0,0,1,
 				]
-			);
+			); 
+			/* this.swap_yzMatrix = [1.0, 0.0, 0.0, 0.0,
+								0.0, 0.0, -1.0, 0.0,
+								0.0, 1.0, 0.0, 0.0,
+								0.0, 0.0, 0.0, 1.0]; */
 		}else{
 			this.swap_yzMatrix = [
 				1,0,0,0,
 				0,1,0,0,
 				0,0,1,0,
 				0,0,0,1
-			]
+			];
 		}
 
-		
+		 
 	}
 	
 	// This method is called to draw the triangular mesh.
