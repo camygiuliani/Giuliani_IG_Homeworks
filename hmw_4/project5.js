@@ -160,7 +160,7 @@ class MeshDrawer
 
 				//----Phong part-----
 				//camera direction
-				vec3 viewDir= normalize(vec3(v_frag_pos)-vec3(0.0));
+				vec3 viewDir= normalize(vec3(-v_frag_pos));
 				vec3 h_angle=normalize(light_dir+viewDir);
 
 				float cos_omega=max(0.0,dot(h_angle,normalize(v_normal)));
