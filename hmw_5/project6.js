@@ -1,4 +1,4 @@
-var raytraceFS = `
+var raytraceFS = /*glsl*/ `
 struct Ray {
 	vec3 pos;
 	vec3 dir;
@@ -14,8 +14,11 @@ struct Material {
 };
 
 struct Sphere {
+	//center of the sphere
 	vec3     center;
+	//raggio della sfera
 	float    radius;
+	//material della sphere
 	Material mtl;
 };
 
@@ -24,16 +27,27 @@ struct Light {
 	vec3 intensity;
 };
 
+
+
 struct HitInfo {
+	// Distance from the ray's origin to the intersection point
 	float    t;
+	//posizion of the hitting point
 	vec3     position;
+	//normal surface in the hitting point
 	vec3     normal;
+	//material of the hitting point
 	Material mtl;
 };
 
+//array with all the spheres in the scene
 uniform Sphere spheres[ NUM_SPHERES ];
+//array with all the lights in the scene
 uniform Light  lights [ NUM_LIGHTS  ];
+//environment map for reflecions
 uniform samplerCube envMap;
+
+// Maximum number of bounces allowed for ray tracing
 uniform int bounceLimit;
 
 bool IntersectRay( inout HitInfo hit, Ray ray );
@@ -57,7 +71,11 @@ vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
 // Returns true if an intersection is found.
 bool IntersectRay( inout HitInfo hit, Ray ray )
 {
+	// wei nitialize the intersection distance to a veeeery large number,
+	// this respresents the distance along the ray where the intersection is found.
 	hit.t = 1e30;
+
+	//bolean to understand if the intersection was found
 	bool foundHit = false;
 
 
@@ -65,7 +83,28 @@ bool IntersectRay( inout HitInfo hit, Ray ray )
 		// TO-DO: Test for ray-sphere intersection
 		// TO-DO: If intersection is found, update the given HitInfo
 
+		// I take one sphere
 		Sphere sphere=spheres[i];
+
+		float discriminant= 1; //// TODO
+		
+		if(discriminant>=0.0){ // case in which I find the hit 
+
+			// I want the closest ray-sphere intersection
+			float t0=1;
+
+			if(t0> 0.0 && t0 <=hit.t){
+				foundHit=true;
+				hit.t= t0;
+				hit.position=ray.pos + (ray.dir * t0);
+				hit.mtl=sphere.mtl;
+				hit.normal= normalize((hit.position - sphere.center)/sphere.radius );
+
+			}
+
+
+		}
+
 	}
 	return foundHit;
 }
