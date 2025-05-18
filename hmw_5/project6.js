@@ -52,6 +52,33 @@ uniform int bounceLimit;
 
 bool IntersectRay( inout HitInfo hit, Ray ray );
 
+bool IntersectShadowRay(Ray ray){
+	
+	bool foundHit = false;
+	for ( int i=0; i<NUM_SPHERES; ++i ) {
+		Sphere sphere = spheres[i];
+
+		// TO-DO: Test for ray-sphere intersection
+		float discriminant = pow(dot(ray.dir, (ray.pos - sphere.center)), 2.0) - 
+			(dot(ray.dir, ray.dir) * (dot((ray.pos - sphere.center), (ray.pos - sphere.center)) - pow(sphere.radius, 2.0))); 
+
+		if(discriminant >= 0.0){
+			foundHit = true; 
+		}
+
+		// find the t value of closet ray-sphere intersection
+		float tVal = ((-1.0 * dot(ray.dir, (ray.pos-sphere.center))) - sqrt(discriminant)) / (dot(ray.dir, ray.dir));
+		if(tVal < 0.0){
+			foundHit = false;
+		}
+		
+		if(foundHit){
+			return foundHit;
+		}	
+	}
+	return foundHit;
+}
+
 
 // Shades the given point and returns the computed color.
 vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
@@ -60,7 +87,7 @@ vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
 	vec3 color = vec3(0,0,0);
 
 	//ambient lighting component--- we set it as 5% of teh diffuse color of the material
-	vec3 ambient_col=mtl.k_d * 0.05;
+	vec3 ambient_col=mtl.k_d * 0.005;
 
 	// to prevent floating-point inaccuracies
 	float eps=3e-4;
@@ -71,25 +98,24 @@ vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
 
 		// we create a ray and we cast it from the surface point to the current light
 		Ray surface_to_light_ray;
-		surface_to_light_ray.dir=normalize(lights[i].pos-position);
+		surface_to_light_ray.dir=normalize(lights[i].position - position);
 
 		//lights[i].pos-position is a vector starting from intersection point to the light 
 		// then we normalize it to make it a 1-lenght vector
 
 		// Offset the starting point slightly to prevent self-shadowing
-        surface_to_light_ray.pos = position + (surface_to_light_ray.dir) * epsilon;
+        surface_to_light_ray.pos = position + (surface_to_light_ray.dir) * eps;
 
 		//now we want to check if the shadow raw hits something , in that case the point is in shadow
 
-		HitInfo hit={0.0,vec3(0.0),vec3(0.0),{vec3(0.0),vec3(0.0),0}};
-		if(IntersectRay(hit,surface_to_light_ray)){
+		if(IntersectShadowRay(surface_to_light_ray)){
 			//the point is in shadow so we displey the ambient color
 			color+=ambient_col;
 		}
 		else{ 
 			// TODO: If not shadowed, perform shading using the Blinn model
 
-			 /** *********************
+			/** *********************
 			 *! Blinnnn Phong 
 			 **********************/
 
@@ -116,13 +142,12 @@ vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
             float cosAlpha = max(0.0, dot(normal, halfAngle));
 
             // Blinn-Phong specular reflection: k_s * I * (cos(α))^n
-            vec3 specularComponent = mtl.k_s * lights[i].intensity * pow(cosAlpha, mtl.n);
-
+			vec3 specularComponent = mtl.k_s * lights[i].intensity * pow(max(0.0, dot(normal, halfAngle)),mtl.n); 
             // -------------------------
             // 3. Accumulate the Light
             // -------------------------
             // Add ambient, diffuse, and specular components to the final color
-            color += ambientComponent + diffuseComponent + specularComponent;
+            color += ambient_col + diffuseComponent + specularComponent;
 
 
 		}
@@ -157,14 +182,14 @@ bool IntersectRay( inout HitInfo hit, Ray ray )
 		Sphere sphere=spheres[i];
 
 		// Here I use the ray-sphere intersection formula for the discriminant
-		float discriminant= pow((2*ray.dir*(ray.pos-sphere.center)),2) -
-							4*pow(ray.dir,2)*(((ray.pos-sphere.center)*(ray.pos-sphere.center))-sphere.radius);
+		float discriminant= pow(dot(ray.dir, (ray.pos - sphere.center)), 2.0) - 
+			(dot(ray.dir, ray.dir) * (dot((ray.pos - sphere.center), (ray.pos - sphere.center)) - pow(sphere.radius, 2.0))); 
 		
 		// If the discriminant is non-negative, case in which I find the hit 
 		if(discriminant>=0.0){ 
 
 			// I want the closest ray-sphere intersection
-			float t0=1.0;
+			float t0 = (-(dot(ray.dir, (ray.pos-sphere.center))) - sqrt(discriminant)) / (dot(ray.dir, ray.dir));;
 
 			// If the intersection 
 			// is in front of the ray's origin and is closer than previous hits, update HitInfo.
@@ -195,30 +220,46 @@ vec4 RayTracer( Ray ray )
 	if ( IntersectRay( hit, ray ) ) {
 		vec3 view = normalize( -ray.dir );
 		vec3 clr = Shade( hit.mtl, hit.position, hit.normal, view );
+
+		//offset to avoid self-reflections due to floating point errors
+		float eps=1e-4;
 		
 		// Compute reflections
 		vec3 k_s = hit.mtl.k_s;
 		for ( int bounce=0; bounce<MAX_BOUNCES; ++bounce ) {
+
 			if ( bounce >= bounceLimit ) break;
+			// if there are not specular component breaks
 			if ( hit.mtl.k_s.r + hit.mtl.k_s.g + hit.mtl.k_s.b <= 0.0 ) break;
 			
 			Ray r;	// this is the reflection ray
 			HitInfo h;	// reflection hit info
 			
-			// TO-DO: Initialize the reflection ray
+			// TODO: Initialize the reflection ray
+			//omega r in the slide of pdf 16
+			r.dir=  normalize(ray.dir) - 2.0 * (dot(normalize(ray.dir), hit.normal)) * hit.normal;
+			r.pos=hit.position + (r.dir) * 0.0001;
 			
 			if ( IntersectRay( h, r ) ) {
-				// TO-DO: Hit found, so shade the hit point
-				// TO-DO: Update the loop variables for tracing the next reflection ray
-			} else {
+				// TODO: Hit found, so shade the hit point
+				// the reflex ray has hitten something else
+				clr += Shade(h.mtl, h.position, h.normal, view);
+				// TODO: Update the loop variables for tracing the next reflection ray
+				hit = h;
+    			ray = r;	
+			} 
+			else {
 				// The refleciton ray did not intersect with anything,
 				// so we are using the environment color
+
 				clr += k_s * textureCube( envMap, r.dir.xzy ).rgb;
 				break;	// no more reflections
 			}
 		}
+
 		return vec4( clr, 1 );	// return the accumulated color, including the reflections
-	} else {
+	} 
+	else {
 		return vec4( textureCube( envMap, ray.dir.xzy ).rgb, 0 );	// return the environment color
 	}
 }
