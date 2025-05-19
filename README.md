@@ -5,8 +5,11 @@ Camilla Giuliani- 1883207
 ## 📂 Structure  
 - `hmw_1/` - Basic WebGL scene implementing alpha blending
 - `hmw_2/` - More advanced WebGL rendering  
-- `hmw_3/` - Texture thing
-- `hmw_4/` - Texture thing + Blinn shading
+- `hmw_3/` - Implementation of textures
+- `hmw_4/` - Shading with Blinn+Phong
+- `hmw_5/` - Ray Tracing
+- `hmw_6/` - Animation
+
 
 
 ## References
