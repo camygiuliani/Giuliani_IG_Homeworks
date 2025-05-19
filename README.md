@@ -13,3 +13,4 @@ Camilla Giuliani- 1883207
 
 
 ## References
+- https://graphics.cs.utah.edu/courses/cs4600/fall2024/
