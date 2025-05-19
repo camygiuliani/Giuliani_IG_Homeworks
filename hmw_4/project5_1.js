@@ -6,7 +6,7 @@
 
 function GetModelViewMatrix( translationX, translationY, translationZ, rotationX, rotationY )
 {
-	// [TO-DO] Modify the code below to form the transformation matrix.
+	// TODO Modify the code below to form the transformation matrix.
 
 	//With respect to the previous project is replaced with the new GetModelViewMatrix function. This new one does not take the projection matrix as an argument,
 	// and so returns the part of the transformation prior to projection.
@@ -76,7 +76,7 @@ class MeshDrawer
 	// The constructor is a good place for taking care of the necessary initializations.
 	constructor()
 	{
-		// [TO-DO] initializations
+		// TODO initializations
 
 		//same as previous project
 		// swap - in the vertex shader I want the option to apply a rotation matrix which swaps y-axis with z-axis so I use a boolean
@@ -319,7 +319,7 @@ class MeshDrawer
 	// Note that this method can be called multiple times.
 	setMesh( vertPos, texCoords, normals )
 	{
-		// [TO-DO] Update the contents of the vertex buffer objects.
+		//TODO Update the contents of the vertex buffer objects.
 		
 
 		//every vertex has 3 params
@@ -348,7 +348,7 @@ class MeshDrawer
 	// The argument is a boolean that indicates if the checkbox is checked.
 	swapYZ( swap )
 	{
-		 // [TO-DO] Set the uniform parameter(s) of the vertex shader
+		 // TODO Set the uniform parameter(s) of the vertex shader
 		
 		//as in the prevoius hmw
 		gl.useProgram(this.prog);
@@ -390,7 +390,7 @@ class MeshDrawer
 	// transformation matrix, which is the inverse-transpose of matrixMV.
 	draw( matrixMVP, matrixMV, matrixNormal )
 	{
-		// [TO-DO] Complete the WebGL initializations before drawing
+		// TODO Complete the WebGL initializations before drawing
 		gl.useProgram( this.prog );
 
 
@@ -439,7 +439,7 @@ class MeshDrawer
 	{
 
 		// as in the previous work///
-		// [TO-DO] Bind the texture
+		// TODO Bind the texture
 		gl.useProgram(this.prog);
 
 		let hasTexture = img ? 1 : 0;
@@ -488,7 +488,7 @@ class MeshDrawer
 	showTexture( show )
 	{
 		// as in the prevoius work
-		// [TO-DO] set the uniform parameter(s) of the fragment shader to specify if it should use the texture.
+		// TODO set the uniform parameter(s) of the fragment shader to specify if it should use the texture.
 		
 		gl.useProgram( this.prog );
 		gl.uniform1i( this.showLoc, show);
@@ -497,7 +497,7 @@ class MeshDrawer
 	// This method is called to set the incoming light direction
 	setLightDir( x, y, z )
 	{
-		// [TO-DO] set the uniform parameter(s) of the fragment shader to specify the light direction.
+		// TODO set the uniform parameter(s) of the fragment shader to specify the light direction.
 		gl.useProgram(this.prog);
 		gl.uniform3f(this.light_dirLoc,x,y,z);
 	}
@@ -505,7 +505,7 @@ class MeshDrawer
 	// This method is called to set the shininess of the material
 	setShininess( shininess )
 	{
-		// [TO-DO] set the uniform parameter(s) of the fragment shader to specify the shininess.
+		// TODO set the uniform parameter(s) of the fragment shader to specify the shininess.
 		gl.useProgram(this.prog);
 		gl.uniform1f(this.phong_expoLoc, shininess);
 	}
