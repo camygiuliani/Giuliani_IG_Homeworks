@@ -478,15 +478,115 @@ class MeshDrawer
 // This function is called for every step of the simulation.
 // Its job is to advance the simulation for the given time step duration dt.
 // It updates the given positions and velocities.
+
+
+// spring is "molla" and it connects 2 particles(p0 and p1)
+//! springs is the springs array
+/*
+P0 (●)───────spring───────(●) P1
+          ↖ force         force ↗
+*/
+//! dt is the time step , "quanto tempo si sta simulando"
+//! positions is the particles positions array
+//! velocities is the particles velocities array
+//! stifness -> Hook, spring stifness, "rigidità della molla"
+//! damping is the damping force( resistance to motion), the "forza di smorzamento"
+//! particleMass is the mass of each particle
+//! gravity is the gravitational acceleration 
+//! restitution is the "rimbalzo", bounce factor (0 = no bounce, 1 = perfectly elastic bounce).
 function SimTimeStep( dt, positions, velocities, springs, stiffness, damping, particleMass, gravity, restitution )
 {
 	var forces = Array( positions.length ); // The total for per particle
+	forces.fill(new Vec3(0,0,0));
 
-	// [TO-DO] Compute the total force of each particle
+	// TODO Compute the total force of each particle
+	for(let i = 0; i < springs.length; i++){
+		let spring = springs[i];
+
+		// spring attributes
+		let x0 = positions[spring.p0]; // particle position
+		let x1 = positions[spring.p1];
+		let v0 = velocities[spring.p0]; // particle velocity
+		let v1 = velocities[spring.p1]; 
+
+		// caculate spring force
+		let length = x1.sub(x0).len();
+		let restLengh= spring.rest; 
+		let springDirection = x1.sub(x0).div(length); 
+
+		// caculate spring force
+		let springForce = springDirection.mul(stiffness * (length - restLengh)); //stiffness * (length - restlength) * springDir
+
+		// add spring force
+		forces[spring.p0] = forces[spring.p0].add(springForce); 
+		forces[spring.p1] = forces[spring.p1].add(springForce.mul(-1.0));
+
+		// caculate damping force 
+		let lengthChangeSpeed = v1.sub(v0).dot(springDirection); // (v1-v0) * springDir
+		let dampingForce = springDirection.mul(lengthChangeSpeed).mul(damping)
+
+		// add damping force 
+		forces[spring.p0] = forces[spring.p0].add(dampingForce); 
+		forces[spring.p1] = forces[spring.p1].add(dampingForce.mul(-1.0));
+	}
 	
-	// [TO-DO] Update positions and velocities
+	// TODO Update positions and velocities
+	for(let i = 0; i < velocities.length; i++){
+		let acceleration = forces[i].div(particleMass).add(gravity); 
+		let velocity = velocities[i].add(acceleration.mul(dt)); 
+		velocities[i] = velocity; 
+	}
+
+	// positions.forEach( pos => pos.y -= 0.05); // alt iteration method
+	for(let i = 0; i < positions.length; i++){
+		let pos = positions[i].add(velocities[i].mul(dt));
+		positions[i] = pos;
+	}
 	
-	// [TO-DO] Handle collisions
+	// TODO Handle collisions
+	for(let i = 0; i < positions.length; i++){
+		
+		let floor = new Vec3(-1.0,-1.0,-1.0); 
+		let ceiling = new Vec3(1.0,1.0,1.0); 
+		
+		let pos = positions[i];
+		let vel = velocities[i]; 
+		
+		if(pos.x < floor.x){
+			let h = Math.abs(pos.x) - Math.abs(floor.x); 
+			pos.x += h + (h * restitution);
+			vel.x = vel.x*(-1.0 * restitution);
+		}
+		if(pos.y < floor.y){
+			let h = Math.abs(pos.y) - Math.abs(floor.y); 
+			pos.y += h + (h * restitution);
+			vel.y = vel.y*(-1.0 * restitution);
+		}
+		if(pos.z < floor.z){
+			let h = Math.abs(pos.z) - Math.abs(floor.z); 
+			pos.z += h + (h * restitution);
+			vel.z = vel.z*(-1.0 * restitution);
+		}
+
+		if(pos.x > ceiling.x){
+			let h = Math.abs(pos.x) - Math.abs(ceiling.x); 
+			pos.x -= h + (h * restitution);
+			vel.x = vel.x*(-1.0 * restitution);
+		}
+		if(pos.y > ceiling.y){
+			let h = Math.abs(pos.y) - Math.abs(ceiling.y); 
+			pos.y -= h + (h * restitution);
+			vel.y = vel.y*(-1.0 * restitution);
+		}
+		if(pos.z > ceiling.z){
+			let h = Math.abs(pos.z) - Math.abs(ceiling.z); 
+			pos.z -= h + (h * restitution);
+			vel.z = vel.z*(-1.0 * restitution);
+		}
+
+
+	}
+	
 	
 }
 
