@@ -484,7 +484,7 @@ class MeshDrawer
 //! springs is the springs array
 /*
 P0 (●)───────spring───────(●) P1
-          ↖ force         force ↗
+  ↖ force            force ↗
 */
 //! dt is the time step , "quanto tempo si sta simulando"
 //! positions is the particles positions array
@@ -504,9 +504,14 @@ function SimTimeStep( dt, positions, velocities, springs, stiffness, damping, pa
 		let spring = springs[i];
 
 		// spring attributes
-		let x0 = positions[spring.p0]; // particle position
+
+		// particle position p0
+		let x0 = positions[spring.p0]; 
+		// particle position p1
 		let x1 = positions[spring.p1];
-		let v0 = velocities[spring.p0]; // particle velocity
+		// particle velocity p0
+		let v0 = velocities[spring.p0];
+		// particle velocity p1 
 		let v1 = velocities[spring.p1]; 
 
 		// caculate spring force
@@ -514,23 +519,26 @@ function SimTimeStep( dt, positions, velocities, springs, stiffness, damping, pa
 		let restLengh= spring.rest; 
 		let springDirection = x1.sub(x0).div(length); 
 
-		// caculate spring force
+		// caculate spring force --- elastic forze Hooke
+		// F = -k * (L - L₀)
 		let springForce = springDirection.mul(stiffness * (length - restLengh)); //stiffness * (length - restlength) * springDir
 
 		// add spring force
 		forces[spring.p0] = forces[spring.p0].add(springForce); 
 		forces[spring.p1] = forces[spring.p1].add(springForce.mul(-1.0));
 
-		// caculate damping force 
+		// caculate damping force -----
+		// "quanto le particelle si stanno avvicinando o allontanando nella direzione della molla"
 		let lengthChangeSpeed = v1.sub(v0).dot(springDirection); // (v1-v0) * springDir
+		// "Forza di smorzamento"
 		let dampingForce = springDirection.mul(lengthChangeSpeed).mul(damping)
 
-		// add damping force 
+		// add damping force - " aggiungo la forza di smorzamento"
 		forces[spring.p0] = forces[spring.p0].add(dampingForce); 
 		forces[spring.p1] = forces[spring.p1].add(dampingForce.mul(-1.0));
 	}
 	
-	// TODO Update positions and velocities
+	// TODO Update positions and velocities with F= m *a  -->   a= F/m + gravity  and   velocity += acceleration * dt   
 	for(let i = 0; i < velocities.length; i++){
 		let acceleration = forces[i].div(particleMass).add(gravity); 
 		let velocity = velocities[i].add(acceleration.mul(dt)); 
@@ -544,6 +552,8 @@ function SimTimeStep( dt, positions, velocities, springs, stiffness, damping, pa
 	}
 	
 	// TODO Handle collisions
+
+	//!The box has limit [-1,1]
 	for(let i = 0; i < positions.length; i++){
 		
 		let floor = new Vec3(-1.0,-1.0,-1.0); 
