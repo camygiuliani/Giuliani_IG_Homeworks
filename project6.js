@@ -1,0 +1,363 @@
+var raytraceFS = /*glsl*/ `
+struct Ray {
+	vec3 pos;
+	vec3 dir;
+};
+
+struct Material {
+	// diffuse coefficient
+	vec3  k_d;	
+	// specular coefficient
+	vec3  k_s;	
+	// specular exponent
+	float n;	
+};
+
+struct Sphere {
+	//center of the sphere
+	vec3     center;
+	//raggio della sfera
+	float    radius;
+	//material della sphere
+	Material mtl;
+};
+
+struct Light {
+	vec3 position;
+	vec3 intensity;
+};
+
+
+
+struct HitInfo {
+	// Distance from the ray's origin to the intersection point
+	float    t;
+	//posizion of the hitting point
+	vec3     position;
+	//normal surface in the hitting point
+	vec3     normal;
+	//material of the hitting point
+	Material mtl;
+};
+
+//array with all the spheres in the scene
+uniform Sphere spheres[ NUM_SPHERES ];
+//array with all the lights in the scene
+uniform Light  lights [ NUM_LIGHTS  ];
+//environment map for reflecions
+uniform samplerCube envMap;
+
+// Maximum number of bounces allowed for ray tracing
+uniform int bounceLimit;
+
+bool IntersectRay( inout HitInfo hit, Ray ray );
+
+bool IntersectShadowRay(Ray ray){
+	
+	bool foundHit = false;
+	for ( int i=0; i<NUM_SPHERES; ++i ) {
+		Sphere sphere = spheres[i];
+
+		
+		// TO-DO: Test for ray-sphere intersection
+		// Camilla Solution----------------------------------------
+
+		float discriminant = pow(dot(ray.dir, (ray.pos - sphere.center)), 2.0) - 
+			(dot(ray.dir, ray.dir) * (dot((ray.pos - sphere.center), (ray.pos - sphere.center)) - pow(sphere.radius, 2.0))); 
+
+		if(discriminant >= 0.0){
+			foundHit = true; 
+		}
+
+		// find the t value of closet ray-sphere intersection
+		float tVal = ((-1.0 * dot(ray.dir, (ray.pos-sphere.center))) - sqrt(discriminant)) / (dot(ray.dir, ray.dir));
+		if(tVal < 0.0){
+			foundHit = false;
+		}
+		
+		if(foundHit){
+			return foundHit;
+		}	
+	}
+	return foundHit;
+}
+
+
+// Shades the given point and returns the computed color.
+vec3 Shade1( Material mtl, vec3 position, vec3 normal, vec3 view )
+{
+	//we initialize the color with Black
+	vec3 color = vec3(0,0,0);
+
+	//ambient lighting component--- we set it as 5% of teh diffuse color of the material
+	vec3 ambient_col=mtl.k_d * 0.005;
+
+	// to prevent floating-point inaccuracies
+	float eps=3e-4;
+
+	color+=ambient_col;	// we add the ambient component to the final color
+	//we loop thorough all the lights in the scene
+	for ( int i=0; i<NUM_LIGHTS; ++i ) {
+
+		// TODO: Check for shadows
+		//Camilla solution-----------------------------------------
+
+		// we create a ray and we cast it from the surface point to the current light
+		Ray surface_to_light_ray;
+		surface_to_light_ray.dir=normalize(lights[i].position - position);
+
+		//lights[i].pos-position is a vector starting from intersection point to the light 
+		// then we normalize it to make it a 1-lenght vector
+
+		// Offset the starting point slightly to prevent self-shadowing
+        surface_to_light_ray.pos = position + (surface_to_light_ray.dir) * eps;
+
+		//now we want to check if the shadow raw hits something , in that case the point is in shadow
+
+		if(IntersectShadowRay(surface_to_light_ray)){
+			//the point is in shadow so we display the ambient color
+			//color+=ambient_col;
+		}
+		else{ 
+			// TODO: If not shadowed, perform shading using the Blinn model
+
+			//Camilla solution-----------------------------------------
+
+			/** *********************
+			 *! Blinnnn Phong 
+			 **********************/
+
+            // Direction from the surface to the light source
+            vec3 lightDir = normalize(lights[i].position - position);
+
+            // Calculate the cosine of the angle between the surface normal and the light direction
+            float cosTheta = dot(normal, lightDir);
+
+            // -------------------------
+            // 1. Diffuse Component
+            // -------------------------
+            // Lambertian reflection model: k_d * I * max(0, cos(theta))
+            vec3 diffuseComponent = mtl.k_d * lights[i].intensity * max(0.0, cosTheta);
+
+            // -------------------------
+            // 2. Specular Component
+            // -------------------------
+            // Blinn-Phong reflection model:
+            // First, compute the half-angle vector (between view and light direction)
+            vec3 halfAngle = normalize(view + lightDir);
+
+            // Compute the cosine of the angle between the normal and the half-angle
+            float cosAlpha = max(0.0, dot(normal, halfAngle));
+
+            // Blinn-Phong specular reflection: k_s * I * (cos(α))^n
+			vec3 specularComponent = mtl.k_s * lights[i].intensity * pow(max(0.0, dot(normal, halfAngle)),mtl.n); 
+            // -------------------------
+            // 3. Accumulate the Light
+            // -------------------------
+
+			if (cosTheta > 0.0) {
+				vec3 diffuseComponent = mtl.k_d * lights[i].intensity * cosTheta;
+
+				vec3 halfAngle = normalize(view + lightDir);
+				float cosAlpha = max(0.0, dot(normal, halfAngle));
+				vec3 specularComponent = mtl.k_s * lights[i].intensity * pow(cosAlpha, mtl.n);
+
+				color += ambient_col + diffuseComponent + specularComponent;
+			}
+            // Add ambient, diffuse, and specular components to the final color
+            color += ambient_col + diffuseComponent + specularComponent;
+
+
+			
+
+
+		}
+
+
+
+
+		
+	}
+	return color;
+}
+
+// Shades the given point and returns the computed color.
+vec3 Shade( Material mtl, vec3 position, vec3 normal, vec3 view )
+{
+    // Start with ambient lighting only.
+    // Ambient is a small percentage of the diffuse material color.
+    vec3 ambient_col = mtl.k_d * 0.005;
+    vec3 color = ambient_col;
+
+    // Small offset to avoid self-shadowing artifacts.
+    float eps = 3e-4;
+
+    // Loop over all lights in the scene.
+    for ( int i = 0; i < NUM_LIGHTS; ++i ) {
+
+        // ------------------------------------------------------------
+        // Shadow test
+        // ------------------------------------------------------------
+
+        // Direction from the surface point to the current light.
+        vec3 lightDir = normalize(lights[i].position - position);
+
+        // Cast a shadow ray from the surface point toward the light.
+        Ray surface_to_light_ray;
+        surface_to_light_ray.dir = lightDir;
+
+        // Offset the ray origin slightly to avoid intersecting the same surface.
+        surface_to_light_ray.pos = position + lightDir * eps;
+
+        // If the shadow ray hits something, this light does not contribute.
+        if ( IntersectShadowRay(surface_to_light_ray) ) {
+            continue;
+        }
+
+        // ------------------------------------------------------------
+        // Blinn-Phong shading
+        // ------------------------------------------------------------
+
+        // Cosine between the surface normal and the light direction.
+        float cosTheta = dot(normal, lightDir);
+
+        // If the light is behind the surface, ignore diffuse/specular.
+        if ( cosTheta > 0.0 ) {
+
+            // Diffuse component: Lambertian reflection.
+            vec3 diffuseComponent = mtl.k_d * lights[i].intensity * cosTheta;
+
+            // Halfway vector between the light direction and the view direction.
+            vec3 halfAngle = normalize(lightDir + view);
+
+            // Cosine between the normal and the halfway vector.
+            float cosAlpha = max(0.0, dot(normal, halfAngle));
+
+            // Specular component: Blinn-Phong reflection.
+            vec3 specularComponent = mtl.k_s * lights[i].intensity * pow(cosAlpha, mtl.n);
+
+            // Add this light contribution.
+            color += diffuseComponent + specularComponent;
+        }
+    }
+
+    return color;
+}
+
+// Intersects the given ray with all spheres in the scene
+// and updates the given HitInfo using the information of the sphere
+// that first intersects with the ray.
+// Returns true if an intersection is found.
+bool IntersectRay( inout HitInfo hit, Ray ray )
+{
+	// wei nitialize the intersection distance to a veeeery large number,
+	// this respresents the distance along the ray where the intersection is found.
+	hit.t = 1e30;
+
+	//bolean to understand if the intersection was found
+	bool foundHit = false;
+
+
+	for ( int i=0; i<NUM_SPHERES; ++i ) {
+		// TODO: Test for ray-sphere intersection
+		// TODO: If intersection is found, update the given HitInfo
+		//Camilla solution-----------------------------------------
+
+		// I take current sphere
+		Sphere sphere=spheres[i];
+
+		// Here I use the ray-sphere intersection formula for the discriminant
+		float discriminant= pow(dot(ray.dir, (ray.pos - sphere.center)), 2.0) - 
+			(dot(ray.dir, ray.dir) * (dot((ray.pos - sphere.center), (ray.pos - sphere.center)) - pow(sphere.radius, 2.0))); 
+		
+		// If the discriminant is non-negative, case in which I find the hit 
+		if(discriminant>=0.0){ 
+
+			// I want the closest ray-sphere intersection
+			float t0 = (-(dot(ray.dir, (ray.pos-sphere.center))) - sqrt(discriminant)) / (dot(ray.dir, ray.dir));
+
+			// If the intersection 
+			// is in front of the ray's origin and is closer than previous hits, update HitInfo.
+			if(t0> 0.0 && t0 <=hit.t){
+				foundHit=true;
+
+				// Update the closest intersection distance.
+				hit.t= t0;
+
+				hit.position=ray.pos + (ray.dir * t0);
+				hit.mtl=sphere.mtl;
+				hit.normal= normalize((hit.position - sphere.center)/sphere.radius );
+
+			}
+
+
+		}
+
+	}
+	return foundHit;
+}
+
+
+
+// Given a ray, returns the shaded color where the ray intersects a sphere.
+// If the ray does not hit a sphere, returns the environment color.
+vec4 RayTracer( Ray ray )
+{
+	HitInfo hit;
+	if ( IntersectRay( hit, ray ) ) {
+		vec3 view = normalize( -ray.dir );
+		vec3 clr = Shade( hit.mtl, hit.position, hit.normal, view );
+
+		//offset to avoid self-reflections due to floating point errors
+		float eps=1e-4;
+		
+		// Compute reflections
+		vec3 k_s = hit.mtl.k_s;
+		for ( int bounce=0; bounce<MAX_BOUNCES; ++bounce ) {
+
+			if ( bounce >= bounceLimit ) break;
+			// if there are not specular component breaks
+			if ( hit.mtl.k_s.r + hit.mtl.k_s.g + hit.mtl.k_s.b <= 0.0 ) break;
+			
+			Ray r;	// this is the reflection ray
+			HitInfo h;	// reflection hit info
+			
+			// TODO: Initialize the reflection ray
+			//Camilla solution-----------------------------------------
+
+			//omega r in the slide of pdf 16
+			r.dir=  normalize(ray.dir) - 2.0 * (dot(normalize(ray.dir), hit.normal)) * hit.normal;
+			r.pos=hit.position + (r.dir) * 0.0001;
+			
+			if ( IntersectRay( h, r ) ) {
+				// TODO: Hit found, so shade the hit point
+				// Camilla solution-----------------------------------------
+				// the reflex ray has hitten something else
+				
+				//new part
+				vec3 reflectedView = normalize(-r.dir);
+
+				clr += Shade(h.mtl, h.position, h.normal, reflectedView)*k_s;
+
+				k_s *= h.mtl.k_s;	// update the specular coefficient for the next bounce
+				// TODO: Update the loop variables for tracing the next reflection ray
+				//Camilla solution-----------------------------------------
+				hit = h;
+    			ray = r;	
+			} 
+			else {
+				// The refleciton ray did not intersect with anything,
+				// so we are using the environment color
+
+				clr += k_s * textureCube( envMap, r.dir.xzy ).rgb;
+				break;	// no more reflections
+			}
+		}
+
+		return vec4( clr, 1 );	// return the accumulated color, including the reflections
+	} 
+	else {
+		return vec4( textureCube( envMap, ray.dir.xzy ).rgb, 0 );	// return the environment color
+	}
+}
+`;

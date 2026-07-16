@@ -1,0 +1,276 @@
+// This function takes the projection matrix, the translation, and two rotation angles (in radians) as input arguments.
+// The two rotations are applied around x and y axes.
+// It returns the combined 4x4 transformation matrix as an array in column-major order.
+// The given projection matrix is also a 4x4 matrix stored as an array in column-major order.
+// You can use the MatrixMult function defined in project4.html to multiply two 4x4 matrices in the same format.
+function GetModelViewProjection( projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY )
+{
+	// TO-DO Modify the code below to form the transformation matrix.
+	//Camilla solution------------------
+	var trans = [
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		translationX, translationY, translationZ, 1
+	];
+
+	// new variables for rotation angles and corresponding sin/cos for each one
+	var angleX=rotationX;
+	var angleY=rotationY;
+	var cosx=Math.cos(angleX);
+	var sinx=Math.sin(angleX);
+	var cosy=Math.cos(angleY);
+	var siny=Math.sin(angleY);
+
+	//rotation matrices
+	var Rx=[
+		1,0,0,0,
+		0,cosx,sinx,0,
+		0,-sinx,cosx,0,
+		0,0,0,1
+	];
+	var Ry=[
+		cosy,0,-siny,0,
+		0,1,0,0,
+		siny,0,cosy,0,
+		0,0,0,1
+	];
+
+	// now I must begin from the proj.matrix , so the matrix seen from the screen .
+	// Then I have to multiply it by the transformastion matrix, so the one with the traslations.
+	//  At the end I do the product with the rotation matrices.
+	var mvp = MatrixMult( projectionMatrix, trans );
+	mvp = MatrixMult(mvp, Ry);
+	mvp = MatrixMult(mvp, Rx);
+	return mvp;
+}
+
+
+// TO-DO Complete the implementation of the following class.
+
+class MeshDrawer
+{
+	// The constructor is a good place for taking care of the necessary initializations.
+	constructor()
+	{
+		// TO-DO initializations
+		//Camilla solution------------------
+
+		//==================GLSL code for shaders======================
+
+		// swap - in the vertex shader I want the option to apply a rotation matrix which swaps y-axis with z-axis so I use a boolean
+		// pos - 3D position of the vertex
+		//tc -texture coordinate of the vertex
+		//vtc - this is varying because I use it to pass tc to the fragment shader
+		//mvp - is the Model-View-Proj matrix used to transform pos
+		var VertexShaderText=`
+			uniform bool swap;
+			uniform mat4 mvp;
+			attribute vec3 pos;
+			attribute vec2 tc;
+			varying vec2 vtc;
+			void main(){
+				if ( !swap ){
+					gl_Position = mvp * vec4(pos, 1);
+				}
+				else {
+					gl_Position = mvp * mat4(
+								1.0, 0.0, 0.0, 0.0,
+								0.0, 0.0, 1.0, 0.0,
+								0.0, 1.0, 0.0, 0.0,
+								0.0, 0.0, 0.0, 1.0) * vec4(pos, 1);
+				}
+				vtc = tc;
+			}
+		` 
+		//show - boolean to decide if we want to show the texture or not
+		//st - the texture sampler
+		//vtc- intrerpolated texture coodinates from the vertex shader
+		var fragmentShaderText = `
+			precision mediump float;
+			uniform bool show;
+			uniform sampler2D st;
+			varying vec2 vtc;
+			void main(){
+				if(show){
+					gl_FragColor = texture2D(st,vtc);
+				}
+				else{
+					gl_FragColor = vec4(1,gl_FragCoord.z*gl_FragCoord.z,0,1);;
+				}
+			}
+		` 			
+	    // end of shader code
+		
+		
+		// creating buffers
+		this.virtualS=gl.createShader(gl.VERTEX_SHADER);
+		this.fragmentS=gl.createShader(gl.FRAGMENT_SHADER);
+
+		// load the shader source code into the shaders
+		gl.shaderSource(this.virtualS, VertexShaderText);
+		gl.shaderSource(this.fragmentS, fragmentShaderText);
+		
+		// compile the shaders
+		gl.compileShader(this.virtualS);
+		gl.compileShader(this.fragmentS);
+
+		// check for shader compile errors
+		if(!gl.getShaderParameter(this.virtualS, gl.COMPILE_STATUS)){
+			console.error('Error compiling shader', gl.getShaderInfoLog(this.virtualS));
+			}
+		if(!gl.getShaderParameter(this.fragmentS, gl.COMPILE_STATUS)){
+			console.error('Error compiling shader', gl.getShaderInfoLog(this.fragmentS));
+			}
+
+		//create the shader program and attach the shaders to it
+		this.prog = gl.createProgram();
+		gl.attachShader(this.prog, this.virtualS);
+		gl.attachShader(this.prog, this.fragmentS);
+
+		//link the shader program
+		gl.linkProgram(this.prog);
+
+		//check for linking errors
+		if (!gl.getProgramParameter(this.prog, gl.LINK_STATUS)) {
+			console.error('ERROR linking program!', gl.getProgramInfoLog(this.prog));
+			return;
+		}
+		gl.validateProgram(this.prog);
+		if (!gl.getProgramParameter(this.prog, gl.VALIDATE_STATUS)) {
+			console.error('ERROR validating program!', gl.getProgramInfoLog(this.prog));
+			return;
+		}
+
+		// now we can get the location of attributes and uniforms
+		this.pos = gl.getAttribLocation(this.prog, 'pos');
+		this.tc = gl.getAttribLocation(this.prog, 'tc');
+		this.mvp = gl.getUniformLocation(this.prog, 'mvp');
+		this.swap = gl.getUniformLocation(this.prog, 'swap');
+		this.show = gl.getUniformLocation(this.prog, 'show');
+		gl.useProgram( this.prog );
+
+		this.checkbox_show = true;
+		this.texture_exist = false;
+		gl.uniform1i( this.show, false );
+		gl.uniform1i( this.swap, false );
+
+		this.TriangleBuf = gl.createBuffer();
+		
+		this.TextureBuf = gl.createBuffer();
+		this.objTex = gl.createTexture();
+		this.sampler = gl.getUniformLocation(this.prog, 'st');
+
+	}
+	
+	// This method is called every time the user opens an OBJ file.
+	// The arguments of this function is an array of 3D vertex positions
+	// and an array of 2D texture coordinates.
+	// Every item in these arrays is a floating point value, representing one
+	// coordinate of the vertex position or texture coordinate.
+	// Every three consecutive elements in the vertPos array forms one vertex
+	// position and every three consecutive vertex positions form a triangle.
+	// Similarly, every two consecutive elements in the texCoords array
+	// form the texture coordinate of a vertex.
+	// Note that this method can be called multiple times.
+	setMesh( vertPos, texCoords )
+	{
+		// TO-DO Update the contents of the vertex buffer objects.
+		//Camilla solution--------------
+		
+		//every vertex has 3 params
+		this.numTriangles = vertPos.length / 3;
+		gl.useProgram(this.prog);
+
+		//loading vertex pos in every buffer
+		gl.bindBuffer( gl.ARRAY_BUFFER, this.TriangleBuf );
+		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array(vertPos), gl.STATIC_DRAW );
+
+		gl.bindBuffer( gl.ARRAY_BUFFER, this.TextureBuf );
+		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW );
+
+	}
+	
+	// This method is called when the user changes the state of the
+	// "Swap Y-Z Axes" checkbox. 
+	// The argument is a boolean that indicates if the checkbox is checked.
+	swapYZ( swap )
+	{
+		// TO-DO Set the uniform parameter(s) of the vertex shader
+		//Camilla solution------------------
+
+		gl.useProgram(this.prog);
+		gl.uniform1i( this.swap, swap );
+	}
+	
+	// This method is called to draw the triangular mesh.
+	// The argument is the transformation matrix, the same matrix returned
+	// by the GetModelViewProjection function above.
+	draw( trans )
+	{
+		// TO-DO Complete the WebGL initializations before drawing
+		//Camilla solution------------------
+
+		gl.useProgram( this.prog );
+
+		//set the mvp matrix
+		gl.uniformMatrix4fv( this.mvp, false, trans );
+
+		// set the vertex position attribute
+		gl.bindBuffer( gl.ARRAY_BUFFER, this.TriangleBuf );
+		gl.vertexAttribPointer( this.pos, 3, gl.FLOAT, false, 0, 0 );
+		gl.enableVertexAttribArray( this.pos );
+
+		// set the texture coordinate attribute
+		gl.bindBuffer( gl.ARRAY_BUFFER, this.TextureBuf);
+		gl.vertexAttribPointer( this.tc, 2, gl.FLOAT, false, 0, 0 );
+		gl.enableVertexAttribArray( this.tc );
+
+		gl.drawArrays( gl.TRIANGLES, 0, this.numTriangles );
+	}
+	
+	// This method is called to set the texture of the mesh.
+	// The argument is an HTML IMG element containing the texture data.
+	setTexture( img )
+	{
+		// TO-DO Bind the texture
+		//Camilla solution------------------
+		gl.useProgram(this.prog);
+		
+		//activate the texture unit 0 and bind the texture object to it
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, this.objTex);
+
+		// You can set the texture image data using the following command.
+		gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img );
+
+		
+		// TO-DO Now that we have a texture, it might be a good idea to set
+		// some uniform parameter(s) of the fragment shader, so that it uses the texture.
+
+		// set the texture parameters
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		
+
+		gl.uniform1i( this.sampler, 0 );
+		this.texture_exist = true;
+		gl.uniform1i( this.show, this.checkbox_show && this.texture_exist );
+
+	}
+	
+	// This method is called when the user changes the state of the
+	// "Show Texture" checkbox. 
+	// The argument is a boolean that indicates if the checkbox is checked.
+	showTexture( show )
+	{
+		// TO-DO set the uniform parameter(s) of the fragment shader to specify if it should use the texture.
+		//Camilla solution------------------
+		this.checkbox_show = show;
+		gl.useProgram( this.prog );
+		gl.uniform1i( this.show, this.checkbox_show && this.texture_exist);
+	}
+	
+}
